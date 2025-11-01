@@ -85,6 +85,23 @@
   <script>
 const BASE_URL = "https://lyon2.onrender.com";
 
+
+function previewPhoto(event) {
+  const previewContainer = document.getElementById("previewContainer");
+  const previewImage = document.getElementById("previewImage");
+
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function (e) {
+    previewImage.src = e.target.result;
+    previewContainer.style.display = "block";
+  };
+  reader.readAsDataURL(file);
+}
+
+
 let users = [];
 let currentIndex = 0;
 
