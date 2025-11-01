@@ -85,6 +85,22 @@
   <script>
 const BASE_URL = "https://lyon2.onrender.com";
 
+let users = [];
+let currentIndex = 0;
+
+// ✅ Show Form Page
+function showForm() {
+  switchPage("form-page");
+}
+
+// ✅ Page Switcher Utility
+function switchPage(pageId) {
+  const allPages = document.querySelectorAll(".card");
+  allPages.forEach(page => page.classList.remove("active"));
+  document.getElementById(pageId).classList.add("active");
+}
+
+// ✅ Load Users
 async function loadUsers() {
   try {
     const gender = document.getElementById("gender").value;
@@ -103,6 +119,7 @@ async function loadUsers() {
   }
 }
 
+// ✅ Like Functionality
 function likeUser() {
   const card = document.getElementById("currentUserCard");
   card.classList.add("swipe-right");
@@ -135,6 +152,34 @@ function likeUser() {
   }, 400);
 }
 
+// ✅ Show Browse Page
+function showBrowse() {
+  switchPage("browse");
+  currentIndex = 0;
+  showUser();
+}
+
+// ✅ Show Current User
+function showUser() {
+  const user = users[currentIndex];
+  const container = document.getElementById("currentUserCard");
+  const buttons = document.querySelector(".swipe-buttons");
+
+  if (!user) {
+    container.innerHTML = "<p>No more users available 💔</p>";
+    buttons.style.display = "none";
+    return;
+  }
+
+  buttons.style.display = "flex";
+  container.innerHTML = `
+    <img src="${BASE_URL}/uploads/${user.image}" alt="">
+    <h2>${user.name}</h2>
+    <p>${user.bio}</p>
+  `;
+}
+
+// ✅ Handle Profile Submission
 function handleSubmit(event) {
   event.preventDefault();
   const form = event.target;
@@ -166,9 +211,8 @@ function handleSubmit(event) {
       alert("Something went wrong");
     });
 }
-
-
 </script>
+
 
 </body>
 </html>
