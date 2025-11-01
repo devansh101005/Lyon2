@@ -16,10 +16,16 @@ app.use(express.json());
 
 // ✅ MySQL connection
 const db = mysql.createConnection({
-  host: "localhost",
-  user: "root",
-  password: "Operatingsystem@007",
-  database: "lyon_db",
+  // host: "localhost",
+  // user: "root",
+  // password: "Operatingsystem@007",
+  // database: "lyon_db",
+  // port: process.env.MYSQLPORT
+  host: process.env.MYSQL_ADDON_HOST,
+  user: process.env.MYSQL_ADDON_USER,
+  password: process.env.MYSQL_ADDON_PASSWORD,
+  database: process.env.MYSQL_ADDON_DB,
+  port: process.env.MYSQL_ADDON_PORT
 });
 
 db.connect(err => {
@@ -90,4 +96,8 @@ app.post("/like", (req, res) => {
 app.use(express.static(path.join(__dirname, "public")));
 
 // ✅ Start server
-app.listen(3000, () => console.log("🌐 Server running at http://localhost:3000"));
+//app.listen(3000, () => console.log("🌐 Server running at http://localhost:3000"));
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
