@@ -93,22 +93,49 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// ✅ Route: upload new user
+// ✅ Upload route (handle new or existing user)
 app.post("/upload", upload.single("image"), (req, res) => {
   const { name, email, bio } = req.body;
   const image = req.file ? req.file.filename : null;
-  if (!name || !email || !image) return res.status(400).send("Missing required fields");
 
-  const sql = "INSERT INTO users (name, email, bio, image) VALUES (?, ?, ?, ?)";
-  db.query(sql, [name, email, bio, image], (err, result) => {
+  if (!name || !email) {
+    return res.status(400).send("Missing required fields");
+  }
+
+  // ✅ Check if user already exists
+  const checkSql = "SELECT * FROM users WHERE email = ?";
+  db.query(checkSql, [email], (err, results) => {
     if (err) {
-      console.error("❌ Error saving profile:", err);
+      console.error("❌ Error checking user:", err.sqlMessage);
       return res.status(500).send("Database error");
     }
-    console.log("✅ Profile saved:", result);
-    res.send("Profile uploaded successfully!");
+
+    if (results.length > 0) {
+      // ✅ User already exists → don’t insert again
+      console.log("ℹ️ User already exists:", email);
+      return res.status(200).json({
+        message: "User already exists",
+        user: results[0],
+      });
+    } else {
+      // ✅ New user → insert into DB
+      const sql =
+        "INSERT INTO users (name, email, bio, image) VALUES (?, ?, ?, ?)";
+      db.query(sql, [name, email, bio, image], (err, result) => {
+        if (err) {
+          console.error("❌ Error saving profile:", err.sqlMessage);
+          return res.status(500).send("Database error");
+        }
+        console.log("✅ New profile created:", result);
+        res.status(201).json({
+          message: "Profile created successfully",
+          user: { name, email, bio, image },
+        });
+      });
+    }
   });
 });
+
 
 // ✅ Route: fetch all users (⚠️ must come BEFORE static)
 // ✅ Route to fetch all users (with email too)
