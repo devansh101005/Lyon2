@@ -24,7 +24,7 @@ const db = mysql.createPool({
   port: process.env.MYSQL_ADDON_PORT,
   connectTimeout: 10000,
   waitForConnections: true,
-  queueLimit: 0
+  queueLimit: 0,
 });
 
 db.getConnection((err, connection) => {
@@ -36,7 +36,8 @@ db.getConnection((err, connection) => {
 });
 
 // ✅ Auto-create tables
-db.query(`
+db.query(
+  `
   CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
@@ -46,22 +47,27 @@ db.query(`
     gender VARCHAR(20),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   );
-`, err => {
-  if (err) console.error('❌ Error creating users table:', err);
-  else console.log('✅ Users table ready.');
-});
+`,
+  (err) => {
+    if (err) console.error("❌ Error creating users table:", err);
+    else console.log("✅ Users table ready.");
+  }
+);
 
-db.query(`
+db.query(
+  `
   CREATE TABLE IF NOT EXISTS likes (
     id INT AUTO_INCREMENT PRIMARY KEY,
     liker_email VARCHAR(100) NOT NULL,
     liked_email VARCHAR(100) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   );
-`, err => {
-  if (err) console.error('❌ Error creating likes table:', err);
-  else console.log('✅ Likes table ready.');
-});
+`,
+  (err) => {
+    if (err) console.error("❌ Error creating likes table:", err);
+    else console.log("✅ Likes table ready.");
+  }
+);
 
 // ✅ Multer setup
 const uploadDir = path.join(__dirname, "public/uploads");
@@ -69,31 +75,47 @@ if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
+  filename: (req, file, cb) =>
+    cb(null, Date.now() + path.extname(file.originalname)),
 });
 const upload = multer({ storage });
 
-// ✅ Upload route
+// ✅ Upload route (fixed JSON handling)
 app.post("/upload", upload.single("image"), (req, res) => {
   const { name, email, bio, gender } = req.body;
   const image = req.file ? req.file.filename : null;
 
-  if (!name || !email) return res.status(400).send("Missing required fields");
+  if (!name || !email) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
 
   const checkSql = "SELECT * FROM users WHERE email = ?";
   db.query(checkSql, [email], (err, results) => {
-    if (err) return res.status(500).send("Database error");
-
-    if (results.length > 0) {
-      return res.status(200).json({ message: "User already exists", user: results[0] });
+    if (err) {
+      console.error("❌ Database check error:", err);
+      return res.status(500).json({ error: "Database error" });
     }
 
-    const sql = "INSERT INTO users (name, email, bio, image, gender) VALUES (?, ?, ?, ?, ?)";
+    if (results.length > 0) {
+      return res.status(200).json({
+        message: "User already exists",
+        user: results[0],
+      });
+    }
+
+    const sql =
+      "INSERT INTO users (name, email, bio, image, gender) VALUES (?, ?, ?, ?, ?)";
     db.query(sql, [name, email, bio, image, gender], (err, result) => {
-      if (err) return res.status(500).send("Database error");
+      if (err) {
+        console.error("❌ Insert error:", err);
+        return res.status(500).json({ error: "Database error" });
+      }
 
       console.log("✅ New profile created:", result);
-      res.status(201).json({ message: "Profile created successfully", user: { name, email, bio, image, gender } });
+      res.status(201).json({
+        message: "Profile created successfully",
+        user: { name, email, bio, image, gender },
+      });
     });
   });
 });
@@ -104,34 +126,49 @@ app.get("/users", (req, res) => {
 
   const genderQuery = "SELECT gender FROM users WHERE email = ?";
   db.query(genderQuery, [currentUserEmail], (err, genderResult) => {
-    if (err || genderResult.length === 0)
+    if (err || genderResult.length === 0) {
+      console.error("❌ Error finding user gender:", err);
       return res.status(500).json({ error: "Error finding user gender" });
+    }
 
-    const userGender = genderResult[0].gender;
-    const oppositeGender = userGender === "male" ? "female" : "male";
+    const userGender = genderResult[0].gender?.toLowerCase();
+    const oppositeGender =
+      userGender === "male" ? "female" : userGender === "female" ? "male" : "";
 
     const sql = "SELECT * FROM users WHERE gender = ?";
     db.query(sql, [oppositeGender], (err, results) => {
-      if (err) return res.status(500).json({ error: "Failed to load users from database." });
+      if (err) {
+        console.error("❌ Error loading users:", err);
+        return res
+          .status(500)
+          .json({ error: "Failed to load users from database." });
+      }
       res.json(results);
     });
   });
 });
 
-// ✅ Like route
+// ✅ Like route (JSON fix)
 app.post("/like", (req, res) => {
   const { liker_email, liked_email } = req.body;
-  if (!liker_email || !liked_email) return res.status(400).send("Missing liker or liked email");
+  if (!liker_email || !liked_email) {
+    return res.status(400).json({ error: "Missing liker or liked email" });
+  }
 
   const sql = "INSERT INTO likes (liker_email, liked_email) VALUES (?, ?)";
   db.query(sql, [liker_email, liked_email], (err, result) => {
-    if (err) return res.status(500).send("Database error");
+    if (err) {
+      console.error("❌ Like insert error:", err);
+      return res.status(500).json({ error: "Database error" });
+    }
     console.log(`💖 ${liker_email} liked ${liked_email}`);
-    res.send("Like saved successfully!");
+    res.json({ message: "Like saved successfully!" });
   });
 });
 
 app.use(express.static(path.join(__dirname, "public")));
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, "0.0.0.0", () => console.log(`✅ Server running on port ${PORT}`));
+app.listen(PORT, "0.0.0.0", () =>
+  console.log(`✅ Server running on port ${PORT}`)
+);
