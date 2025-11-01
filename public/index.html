@@ -74,13 +74,15 @@
 
   <!-- Script -->
   <script>
-   let users = [];
+const BASE_URL = "https://lyon2.onrender.com";  // 🌐 your live backend
+
+let users = [];
 let currentIndex = 0;
 
-// 🧠 Fetch users from MySQL database
+// 🧠 Fetch users from deployed backend
 async function loadUsers() {
   try {
-    const res = await fetch('http://localhost:3000/users');
+    const res = await fetch(`${BASE_URL}/users`);
     users = await res.json();
 
     if (users.length === 0) {
@@ -88,79 +90,87 @@ async function loadUsers() {
       return;
     }
 
-    showBrowse(); // Start showing users
+    showBrowse();
   } catch (err) {
     console.error("❌ Error loading users:", err);
     alert("Failed to load users from the database.");
   }
 }
 
-   // let currentIndex = 0;
+function showForm() {
+  switchPage("form-page");
+}
 
-    function showForm() {
-      switchPage("form-page");
-    }
+function showProfile() {
+  const name = document.getElementById("username").value.trim();
+  const snuId = document.getElementById("snuId").value.trim();
+  const bio = document.getElementById("bio").value.trim();
+  const preview = document.getElementById("previewImage").src;
 
-    function showProfile() {
-      const name = document.getElementById("username").value.trim();
-      const snuId = document.getElementById("snuId").value.trim();
-      const bio = document.getElementById("bio").value.trim();
-      const preview = document.getElementById("previewImage").src;
+  if (!name || !snuId || !preview) {
+    alert("Please fill your name, SNU ID, and upload a photo!");
+    return;
+  }
 
-      if (!name || !snuId || !preview) {
-        alert("Please fill your name, SNU ID, and upload a photo!");
-        return;
-      }
+  switchPage("my-profile");
+  const card = document.getElementById("myProfileCard");
+  card.innerHTML = `
+    <img src="${preview}" alt="">
+    <h2>${name}</h2>
+    <p>${bio ? bio : ""}</p>
+  `;
 
-      switchPage("my-profile");
-      const card = document.getElementById("myProfileCard");
-      card.innerHTML = `
-        <img src="${preview}" alt="">
-        <h2>${name}</h2>
-        <p>${bio ? bio : ""}</p>
-      `;
+  users.unshift({ name, bio, img: preview });
+}
 
-      // Add your own profile to the browse list (without exposing SNU ID)
-      users.unshift({ name, bio, img: preview });
-    }
+function showBrowse() {
+  switchPage("browse");
+  currentIndex = 0;
+  showUser();
+}
 
-    function showBrowse() {
-      switchPage("browse");
-      currentIndex = 0;
-      showUser();
-    }
+function showUser() {
+  const user = users[currentIndex];
+  const container = document.getElementById("currentUserCard");
+  const buttons = document.querySelector(".swipe-buttons");
 
-    function showUser() {
-      const user = users[currentIndex];
-      const container = document.getElementById("currentUserCard");
-      const buttons = document.querySelector(".swipe-buttons");
+  if (!user) {
+    container.innerHTML = `<p>No more users available 💔</p>`;
+    buttons.style.display = "none";
+    return;
+  }
 
-      if (!user) {
-        container.innerHTML = `<p>No more users available 💔</p>`;
-        buttons.style.display = "none";
-        return;
-      }
+  buttons.style.display = "flex";
+  container.innerHTML = `
+    <img src="${BASE_URL}/uploads/${user.image}" alt="">
+    <h2>${user.name}</h2>
+    <p>${user.bio}</p>
+  `;
+}
 
-      buttons.style.display = "flex";
-      container.innerHTML = `
-       <img src="/uploads/${user.image}" alt="">
+function nextUser() {
+  const card = document.getElementById("currentUserCard");
+  card.classList.add("swipe-left");
 
-        <h2>${user.name}</h2>
-        <p>${user.bio}</p>
-      `;
-    }
+  const cross = document.createElement("div");
+  cross.classList.add("floating-cross");
+  cross.innerHTML = "💔";
+  document.body.appendChild(cross);
 
-    function nextUser() {
-      const card = document.getElementById("currentUserCard");
-      card.classList.add("swipe-left");
-      setTimeout(() => {
-        currentIndex++;
-        card.classList.remove("swipe-left");
-        showUser();
-      }, 400);
-    }
+  cross.style.left = "50%";
+  cross.style.top = "60%";
+  cross.style.transform = "translate(-50%, -50%)";
 
-  function likeUser() {
+  setTimeout(() => cross.remove(), 1000);
+
+  setTimeout(() => {
+    currentIndex++;
+    card.classList.remove("swipe-left");
+    showUser();
+  }, 400);
+}
+
+function likeUser() {
   const card = document.getElementById("currentUserCard");
   card.classList.add("swipe-right");
 
@@ -173,13 +183,11 @@ async function loadUsers() {
   heart.style.top = "60%";
   heart.style.transform = "translate(-50%, -50%)";
 
-  // 💾 Send like info to the backend
   const likerEmail = document.getElementById("snuId")?.value;
- // your email
-  const likedEmail = users[currentIndex]?.email; // the person you liked
+  const likedEmail = users[currentIndex]?.email;
 
   if (likerEmail && likedEmail) {
-    fetch("http://localhost:3000/like", {
+    fetch(`${BASE_URL}/like`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ liker_email: likerEmail, liked_email: likedEmail })
@@ -199,77 +207,251 @@ async function loadUsers() {
   }, 400);
 }
 
-
-function nextUser() {
-  const card = document.getElementById("currentUserCard");
-  card.classList.add("swipe-left");
-
-  // 💔 Floating cross animation
-  const cross = document.createElement("div");
-  cross.classList.add("floating-cross");
-  cross.innerHTML = "💔";
-  document.body.appendChild(cross);
-
-  cross.style.left = "50%";
-  cross.style.top = "60%";
-  cross.style.transform = "translate(-50%, -50%)";
-
-  setTimeout(() => cross.remove(), 1000);
-
-  setTimeout(() => {
-    currentIndex++;
-    card.classList.remove("swipe-left");
-    showUser();
-  }, 400);
+function previewPhoto(event) {
+  const file = event.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      const img = document.getElementById("previewImage");
+      img.src = e.target.result;
+      document.getElementById("previewContainer").style.display = "block";
+    };
+    reader.readAsDataURL(file);
+  }
 }
 
+function switchPage(pageId) {
+  const allPages = document.querySelectorAll(".card");
+  allPages.forEach(page => page.classList.remove("active"));
+  const target = document.getElementById(pageId);
+  setTimeout(() => target.classList.add("active"), 100);
+}
 
-
-
-
-    function previewPhoto(event) {
-      const file = event.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = function (e) {
-          const img = document.getElementById("previewImage");
-          img.src = e.target.result;
-          document.getElementById("previewContainer").style.display = "block";
-        };
-        reader.readAsDataURL(file);
-      }
-    }
-
-    function switchPage(pageId) {
-      const allPages = document.querySelectorAll(".card");
-      allPages.forEach(page => page.classList.remove("active"));
-      const target = document.getElementById(pageId);
-      setTimeout(() => target.classList.add("active"), 100);
-    }
-    function handleSubmit(event) {
-  event.preventDefault(); // Prevent normal page reload
+function handleSubmit(event) {
+  event.preventDefault();
   const formData = new FormData(event.target);
 
-  fetch('http://localhost:3000/upload', {
-    method: 'POST',
+  fetch(`${BASE_URL}/upload`, {
+    method: "POST",
     body: formData
   })
   .then(response => response.text())
   .then(data => {
     alert(data);
-    showProfile(); // show user's profile after upload
     showProfile();
-loadUsers(); // also load other users from database
-
+    loadUsers();
   })
   .catch(err => {
-    alert('Error uploading profile 😢');
+    alert("Error uploading profile 😢");
     console.error(err);
   });
 
-  return false; // stop form from refreshing page
+  return false;
 }
+</script>
 
-  </script>
+
+
+
+
+//    let users = [];
+// let currentIndex = 0;
+
+// // 🧠 Fetch users from MySQL database
+// async function loadUsers() {
+//   try {
+//     const res = await fetch('http://localhost:3000/users');
+//     users = await res.json();
+
+//     if (users.length === 0) {
+//       alert("No profiles found yet 😢");
+//       return;
+//     }
+
+//     showBrowse(); // Start showing users
+//   } catch (err) {
+//     console.error("❌ Error loading users:", err);
+//     alert("Failed to load users from the database.");
+//   }
+// }
+
+//    // let currentIndex = 0;
+
+//     function showForm() {
+//       switchPage("form-page");
+//     }
+
+//     function showProfile() {
+//       const name = document.getElementById("username").value.trim();
+//       const snuId = document.getElementById("snuId").value.trim();
+//       const bio = document.getElementById("bio").value.trim();
+//       const preview = document.getElementById("previewImage").src;
+
+//       if (!name || !snuId || !preview) {
+//         alert("Please fill your name, SNU ID, and upload a photo!");
+//         return;
+//       }
+
+//       switchPage("my-profile");
+//       const card = document.getElementById("myProfileCard");
+//       card.innerHTML = `
+//         <img src="${preview}" alt="">
+//         <h2>${name}</h2>
+//         <p>${bio ? bio : ""}</p>
+//       `;
+
+//       // Add your own profile to the browse list (without exposing SNU ID)
+//       users.unshift({ name, bio, img: preview });
+//     }
+
+//     function showBrowse() {
+//       switchPage("browse");
+//       currentIndex = 0;
+//       showUser();
+//     }
+
+//     function showUser() {
+//       const user = users[currentIndex];
+//       const container = document.getElementById("currentUserCard");
+//       const buttons = document.querySelector(".swipe-buttons");
+
+//       if (!user) {
+//         container.innerHTML = `<p>No more users available 💔</p>`;
+//         buttons.style.display = "none";
+//         return;
+//       }
+
+//       buttons.style.display = "flex";
+//       container.innerHTML = `
+//        <img src="/uploads/${user.image}" alt="">
+
+//         <h2>${user.name}</h2>
+//         <p>${user.bio}</p>
+//       `;
+//     }
+
+//     function nextUser() {
+//       const card = document.getElementById("currentUserCard");
+//       card.classList.add("swipe-left");
+//       setTimeout(() => {
+//         currentIndex++;
+//         card.classList.remove("swipe-left");
+//         showUser();
+//       }, 400);
+//     }
+
+//   function likeUser() {
+//   const card = document.getElementById("currentUserCard");
+//   card.classList.add("swipe-right");
+
+//   const heart = document.createElement("div");
+//   heart.classList.add("floating-heart");
+//   heart.innerHTML = "❤️";
+//   document.body.appendChild(heart);
+
+//   heart.style.left = "50%";
+//   heart.style.top = "60%";
+//   heart.style.transform = "translate(-50%, -50%)";
+
+//   // 💾 Send like info to the backend
+//   const likerEmail = document.getElementById("snuId")?.value;
+//  // your email
+//   const likedEmail = users[currentIndex]?.email; // the person you liked
+
+//   if (likerEmail && likedEmail) {
+//     fetch("http://localhost:3000/like", {
+//       method: "POST",
+//       headers: { "Content-Type": "application/json" },
+//       body: JSON.stringify({ liker_email: likerEmail, liked_email: likedEmail })
+//     })
+//     .then(res => res.text())
+//     .then(msg => console.log("✅ " + msg))
+//     .catch(err => console.error("❌ Error sending like:", err));
+//   }
+
+//   setTimeout(() => heart.remove(), 1000);
+
+//   setTimeout(() => {
+//     alert("You liked " + users[currentIndex].name + " 💖");
+//     currentIndex++;
+//     card.classList.remove("swipe-right");
+//     showUser();
+//   }, 400);
+// }
+
+
+// function nextUser() {
+//   const card = document.getElementById("currentUserCard");
+//   card.classList.add("swipe-left");
+
+//   // 💔 Floating cross animation
+//   const cross = document.createElement("div");
+//   cross.classList.add("floating-cross");
+//   cross.innerHTML = "💔";
+//   document.body.appendChild(cross);
+
+//   cross.style.left = "50%";
+//   cross.style.top = "60%";
+//   cross.style.transform = "translate(-50%, -50%)";
+
+//   setTimeout(() => cross.remove(), 1000);
+
+//   setTimeout(() => {
+//     currentIndex++;
+//     card.classList.remove("swipe-left");
+//     showUser();
+//   }, 400);
+// }
+
+
+
+
+
+//     function previewPhoto(event) {
+//       const file = event.target.files[0];
+//       if (file) {
+//         const reader = new FileReader();
+//         reader.onload = function (e) {
+//           const img = document.getElementById("previewImage");
+//           img.src = e.target.result;
+//           document.getElementById("previewContainer").style.display = "block";
+//         };
+//         reader.readAsDataURL(file);
+//       }
+//     }
+
+//     function switchPage(pageId) {
+//       const allPages = document.querySelectorAll(".card");
+//       allPages.forEach(page => page.classList.remove("active"));
+//       const target = document.getElementById(pageId);
+//       setTimeout(() => target.classList.add("active"), 100);
+//     }
+//     function handleSubmit(event) {
+//   event.preventDefault(); // Prevent normal page reload
+//   const formData = new FormData(event.target);
+
+//   fetch('http://localhost:3000/upload', {
+//     method: 'POST',
+//     body: formData
+//   })
+//   .then(response => response.text())
+//   .then(data => {
+//     alert(data);
+//     showProfile(); // show user's profile after upload
+//     showProfile();
+// loadUsers(); // also load other users from database
+
+//   })
+//   .catch(err => {
+//     alert('Error uploading profile 😢');
+//     console.error(err);
+//   });
+
+//   return false; // stop form from refreshing page
+// }
+
+//   
+
+
 </body>
 </html>
