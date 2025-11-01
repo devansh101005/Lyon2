@@ -14,24 +14,47 @@ app.use(cors());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// ✅ MySQL connection
-const db = mysql.createConnection({
-  // host: "localhost",
-  // user: "root",
-  // password: "Operatingsystem@007",
-  // database: "lyon_db",
-  // port: process.env.MYSQLPORT
+// // ✅ MySQL connection
+// const db = mysql.createConnection({
+//   // host: "localhost",
+//   // user: "root",
+//   // password: "Operatingsystem@007",
+//   // database: "lyon_db",
+//   // port: process.env.MYSQLPORT
+//   host: process.env.MYSQL_ADDON_HOST,
+//   user: process.env.MYSQL_ADDON_USER,
+//   password: process.env.MYSQL_ADDON_PASSWORD,
+//   database: process.env.MYSQL_ADDON_DB,
+//   port: process.env.MYSQL_ADDON_PORT
+// });
+
+// db.connect(err => {
+//   if (err) console.error("❌ Database connection failed:", err);
+//   else console.log("✅ Connected to MySQL Database!");
+// });
+
+
+const db = mysql.createPool({
+  connectionLimit: 10,
   host: process.env.MYSQL_ADDON_HOST,
   user: process.env.MYSQL_ADDON_USER,
   password: process.env.MYSQL_ADDON_PASSWORD,
   database: process.env.MYSQL_ADDON_DB,
-  port: process.env.MYSQL_ADDON_PORT
+  port: process.env.MYSQL_ADDON_PORT,
+  connectTimeout: 10000,
+  waitForConnections: true,
+  queueLimit: 0
 });
 
-db.connect(err => {
-  if (err) console.error("❌ Database connection failed:", err);
-  else console.log("✅ Connected to MySQL Database!");
+db.getConnection((err, connection) => {
+  if (err) {
+    console.error(" Database connection failed:", err.message);
+  } else {
+    console.log("Connected to MySQL Database!");
+    connection.release();
+  }
 });
+
 
 // ✅ Multer setup
 const uploadDir = path.join(__dirname, "public/uploads");
