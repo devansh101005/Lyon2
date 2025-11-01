@@ -53,6 +53,33 @@ db.getConnection((err, connection) => {
     console.log("Connected to MySQL Database!");
     connection.release();
   }
+
+
+db.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      name VARCHAR(100) NOT NULL,
+      email VARCHAR(100) NOT NULL UNIQUE,
+      bio TEXT,
+      image VARCHAR(255),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `, err => {
+    if (err) console.error('Error creating users table:', err);
+    else console.log('Users table ready.');
+  });
+
+  db.query(`
+    CREATE TABLE IF NOT EXISTS likes (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      liker_email VARCHAR(100) NOT NULL,
+      liked_email VARCHAR(100) NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `, err => {
+    if (err) console.error('Error creating likes table:', err);
+    else console.log('Likes table ready.');
+  });
 });
 
 
