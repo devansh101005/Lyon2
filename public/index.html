@@ -43,9 +43,18 @@
 
     <label for="bio">Bio (optional):</label>
     <textarea id="bio" name="bio" placeholder="Write a short bio" rows="2"></textarea>
+    <label for="gender">Gender:</label>
+<select id="gender" name="gender" required>
+  <option value="">Select gender</option>
+  <option value="Male">Male</option>
+  <option value="Female">Female</option>
+</select>
+
 
     <button class="btn" type="submit">Submit Profile</button>
   </form>
+  <div id="profileDisplay"></div>
+
 </div>
 
 
@@ -65,12 +74,12 @@
       <div id="currentUserCard" class="user-card large"></div>
       <div class="swipe-buttons">
         <button class="btn small dislike" onclick="nextUser()">❌</button>
-        <button class="btn small like" onclick="likeUser()">❤️</button>
+        <button class="btn small like" onclick="likeUser()">❤</button>
       </div>
     </div>
   </div>
 
-  <footer>Made with ❤️ by Team Lyon</footer>
+  <footer>Made with ❤ by Team Lyon</footer>
 
   <!-- Script -->
   <script>
@@ -82,7 +91,12 @@ let currentIndex = 0;
 // 🧠 Fetch users from deployed backend
 async function loadUsers() {
   try {
-    const res = await fetch(`${BASE_URL}/users`);
+    // ye line change krwani h pandey se
+   const gender = document.getElementById("gender").value;
+//const res = await fetch(http://localhost:3000/users?gender=${gender});
+const res = await fetch(`BASE_URL/users?gender=${gender}`);
+
+
     users = await res.json();
 
     if (users.length === 0) {
@@ -135,7 +149,7 @@ function showUser() {
   const buttons = document.querySelector(".swipe-buttons");
 
   if (!user) {
-    container.innerHTML = `<p>No more users available 💔</p>`;
+    container.innerHTML = <p>No more users available 💔</p>;
     buttons.style.display = "none";
     return;
   }
@@ -176,7 +190,7 @@ function likeUser() {
 
   const heart = document.createElement("div");
   heart.classList.add("floating-heart");
-  heart.innerHTML = "❤️";
+  heart.innerHTML = "❤";
   document.body.appendChild(heart);
 
   heart.style.left = "50%";
@@ -187,7 +201,7 @@ function likeUser() {
   const likedEmail = users[currentIndex]?.email;
 
   if (likerEmail && likedEmail) {
-    fetch(`${BASE_URL}/like`, {
+    fetch(`${BASE_URL}`/like, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ liker_email: likerEmail, liked_email: likedEmail })
@@ -229,25 +243,40 @@ function switchPage(pageId) {
 
 function handleSubmit(event) {
   event.preventDefault();
-  const formData = new FormData(event.target);
+  const form = event.target;
+  const formData = new FormData(form);
 
-  fetch(`${BASE_URL}/upload`, {
+  // fetch("http://localhost:3000/upload", {
+  fetch("BASE_URL/upload", {
     method: "POST",
-    body: formData
+    body: formData,
   })
-  .then(response => response.text())
-  .then(data => {
-    alert(data);
-    showProfile();
-    loadUsers();
-  })
-  .catch(err => {
-    alert("Error uploading profile 😢");
-    console.error(err);
-  });
+    .then((res) => res.json())
+    .then((data) => {
+      if (res.ok) {
+        alert(data.message);
 
-  return false;
+        // ✅ Show user profile
+        const user = data.user;
+        const profileDiv = document.getElementById("profileDisplay");
+        profileDiv.innerHTML = `
+          <div style="text-align:center; margin-top:20px;">
+            <h3>${user.name}</h3>
+            <p><strong>Email:</strong> ${user.email}</p>
+            <p><strong>Bio:</strong> ${user.bio || "No bio"}</p>
+            <img src="uploads/${user.image}" width="120" style="border-radius:10px;">
+          </div>
+        `;
+      } else {
+        alert("Error: " + data);
+      }
+    })
+    .catch((err) => {
+      console.error("❌ Upload error:", err);
+      alert("Something went wrong");
+    });
 }
+
 </script>
 
 
